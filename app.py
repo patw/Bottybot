@@ -189,7 +189,7 @@ def index():
         # Dump the history to the user file - multitenant!
         with open(history_file, 'w') as file:
             json.dump(history, file)
-        return redirect(request.url)
+        return redirect(url_for('index'))
     
     # Spit out the template
     return render_template('index.html', history=history, form=form)
@@ -231,6 +231,26 @@ def new():
     except:
         pass
     return redirect(url_for('index'))
+
+# Delete bot identity, return to Wizard
+@app.route('/reset')
+@login_required
+def reset():
+    history_file = session["user"] + "-bot.json"
+    try:
+        os.remove(history_file)
+    except:
+        pass
+    return redirect(url_for('index'))
+
+# Download the chat history
+@app.route('/backup')
+@login_required
+def backup():
+    history_file = session["user"] + "-history.json"
+    history = load_chat_history(history_file)
+    return text_history(history)
+    # finish this
 
 # Login/logout routes that rely on the user being stored in session
 @app.route('/login', methods=['GET', 'POST'])
