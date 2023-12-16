@@ -1,5 +1,5 @@
 # Basic flask stuff for building http APIs and rendering html templates
-from flask import Flask, render_template, redirect, url_for, request, session
+from flask import Flask, render_template, redirect, url_for, request, session, send_from_directory
 
 # Bootstrap integration with flask so we can make pretty pages
 from flask_bootstrap import Bootstrap

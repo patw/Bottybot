@@ -4,6 +4,11 @@
 Botty Bot
 {% endblock %}
 
+{% block head %}
+{{super()}}
+    <link rel="icon" type="image/png" href="static/favicon.ico">
+{% endblock %}
+
 {% block styles %}
 {{ super() }}
 <style>
