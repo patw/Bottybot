@@ -6,6 +6,29 @@
     <div class="row">
         <div class="col-md-8 col-lg-8 mx-lg-auto mx-md-auto">
             {{ wtf.quick_form(form) }}
+            <br/>
+            <table class="table table-sm">
+                <tbody>
+                    <th>Feature</th>
+                    <th>Purpose</th>
+                    <tr>
+                        <td>Name</td>
+                        <td>This is the name you've given the bot identity. Bots work better when the name reflects the identity.</td>
+                    </tr>
+                    <tr>
+                        <td>Identity</td>
+                        <td>This describes the bot's personality and how it responds to prompts. You can make it as helpful or spicy as you'd like!</td>
+                    </tr>
+                    <tr>
+                        <td>Output Token Limit</td>
+                        <td>The number of tokens (words) you want in the responses. The default (-1) allows for unlimited responses.  Lower this for faster responses.</td>
+                    </tr>
+                    <tr>
+                        <td>Temperature</td>
+                        <td>This is a tuning value for the creativity of the bot output. Put the value to 0.1 to 0.3 for more informational personalities and 0.6-0.8 for more creative discussions.</td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
     </div>
 </div>

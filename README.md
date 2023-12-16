@@ -67,6 +67,14 @@ Replace <model> with whatever model you downloaded and put into the llama.cpp/mo
 flask run
 ```
 
+### Optionally you can run this so your entire network can access it
+
+```
+flask run -p 5000 --host 0.0.0.0
+```
+
+This starts the process on port 5000 and accessible on any network interface
+
 ## Accessing BottyBot
 
 http://localhost:5000

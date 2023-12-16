@@ -12,6 +12,9 @@ __pycache__/
 # Chat history
 *-history.json
 
+# Bot configs
+*-bot.json
+
 # Distribution / packaging
 .Python
 build/

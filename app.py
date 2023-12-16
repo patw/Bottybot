@@ -32,20 +32,21 @@ app.config['SECRET_KEY'] = os.environ["SECRET_KEY"]
 users_string = os.environ["USERS"]
 users = json.loads(users_string)
 
-# Load the llm config
+# Load the llm model config
 with open("model.json", 'r') as file:
     model = json.load(file)
 
 # Make it pretty because I can't :(
 Bootstrap(app)
 
-# Load the chat history
-def load_history(file_path):
+# Load the chat history array
+# Chat history looks like an array of events like {"user": "blah", "text": "How do I thing?"}
+def load_chat_history(file_path):
     try:
         with open(file_path, 'r') as file:
             data = json.load(file)
     except FileNotFoundError:
-        # If the file doesn't exist, return an empty array
+        # If the file doesn't exist, return an empty history
         data = []
     except json.JSONDecodeError:
         # Handle JSON decoding errors if the file contains invalid JSON
@@ -54,9 +55,23 @@ def load_history(file_path):
     return data
 
 # Load the bot config
-def load_config():
-    with open("bot.json", "r") as file:
-        data = json.load(file)
+def load_bot_config(file_path):
+
+    # Our default Wizard persona.  Use this if there's no user defined config.
+    data = {
+        "name": "Wizard 🧙", 
+        "identity": "You are Wizard, a friendly chatbot. You help the user answer questions, solve problems and make plans.  You think deeply about the question and provide a detailed, accurate response.", 
+        "tokens": "-1", 
+        "temperature": "0.7"
+    }
+
+    # Load our user configured bot config if there is one.
+    try:
+        with open(file_path, 'r') as file:
+            data = json.load(file)
+    except:
+        pass
+
     return data
 
 # Output the whole history as a text blob
@@ -64,12 +79,10 @@ def text_history(history):
     text_history = ""
     for item in history:
         text_history = text_history + item["user"] + ": " + item["text"] + "\n"
+    print(text_history)
     return text_history
 
-def llm(user_prompt):
-
-    # Load the bot config
-    bot_config = load_config()
+def llm(user_prompt, bot_config):
 
      # Build the prompt
     prompt = model["prompt_format"].replace("{system}", bot_config["identity"])
@@ -93,6 +106,9 @@ def llm(user_prompt):
 
     # Remove that annoying leading string
     output = output.lstrip('\n')
+
+    # Why do you put your own name in the damn output?!
+    output = output.lstrip(bot_config["name"] + ":\n")
 
     # HTML-ify the output
     #output = output.replace("\n", "<br>")
@@ -140,9 +156,13 @@ def index():
 
     # Load the history array but remove items past 5
     history_file = session["user"] + "-history.json"
-    history = load_history(history_file)
+    history = load_chat_history(history_file)
     if len(history) > 5:
         history.pop(0)
+
+    # Load the bot config
+    bot_file = session["user"] + "-bot.json"
+    bot_config = load_bot_config(bot_file)   
 
     # If user is prompting send it
     if form.validate_on_submit():
@@ -155,7 +175,7 @@ def index():
         prompt = text_history(history) + form_result["prompt"]
 
         # Prompt the LLM, add that to history too!
-        new_history = llm(prompt)
+        new_history = llm(prompt, bot_config)
         history.append(new_history)
 
         # Dump the history to the user file - multitenant!
@@ -170,7 +190,9 @@ def index():
 @app.route('/config', methods=['GET', 'POST'])
 @login_required
 def config():
-    bot_config = load_config()    
+
+    bot_file = session["user"] + "-bot.json"
+    bot_config = load_bot_config(bot_file)    
     form = BotConfigForm()
 
     # Populate the form
@@ -185,7 +207,7 @@ def config():
         bot_config["identity"] = form_result["identity"]
         bot_config["tokens"] = form_result["tokens"]
         bot_config["temperature"] = form_result["temperature"]
-        with open("bot.json", 'w') as file:
+        with open(bot_file, 'w') as file:
             json.dump(bot_config, file)
         return redirect(url_for('index'))
 
