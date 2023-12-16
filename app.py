@@ -14,6 +14,7 @@ import os
 import json
 import functools
 import requests
+import time
 
 # Some nice formatting for code
 import misaka
@@ -95,13 +96,21 @@ def llm(user_prompt, bot_config):
         "tokens_cached": 0
     }
 
-    try:
-        # Call the model API
-        response = requests.post(model["llama_endpoint"], headers={"Content-Type": "application/json"}, json=api_data)
-        json_output = response.json()
-        output = json_output['content']
-    except:
-        output = "My AI model is not responding try again in a moment 🔥🐳"
+    # Attempt to do a completion but retry and back off if the model is not ready
+    retries = 3
+    backoff_factor = 1
+    while retries > 0:
+        try:
+            response = requests.post(model["llama_endpoint"], headers={"Content-Type": "application/json"}, json=api_data)
+            json_output = response.json()
+            output = json_output['content']
+            break
+        except:
+            time.sleep(backoff_factor)
+            backoff_factor *= 2
+            retries -= 1
+            output = "My AI model is not responding try again in a moment 🔥🐳"
+            continue
 
     # Remove that annoying leading string
     output = output.lstrip('\n')

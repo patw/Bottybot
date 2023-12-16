@@ -10,7 +10,7 @@
                     {% for response in history %}
                     <tr>
                         <td>{{ response.user }}</td>
-                        <td>{{ response.text | safe }}</td>
+                        <td style="word-wrap: break-word;">{{ response.text | safe }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
