@@ -79,7 +79,6 @@ def text_history(history):
     text_history = ""
     for item in history:
         text_history = text_history + item["user"] + ": " + item["text"] + "\n"
-    print(text_history)
     return text_history
 
 def llm(user_prompt, bot_config):
