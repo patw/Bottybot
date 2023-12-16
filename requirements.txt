@@ -1,0 +1,16 @@
+# This file is used by pip to install required python packages
+# Usage: pip install -r requirements.txt
+
+# Flask Framework
+Flask
+Flask-WTF
+Flask-Bootstrap4
+
+# Environment file handling
+python-dotenv
+
+# REST Stuff
+requests
+
+# Rendering stuff
+misaka

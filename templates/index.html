@@ -1,0 +1,34 @@
+{% extends 'bot_base.html' %}
+{% import "bootstrap/wtf.html" as wtf %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-md-12 col-lg-12 mx-lg-auto mx-md-auto">
+            <table class="table table-sm">
+                <tbody>
+                    {% for response in history %}
+                    <tr>
+                        <td>{{ response.user }}</td>
+                        <td>{{ response.text | safe }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {{ wtf.quick_form(form) }}
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript code to set focus -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Get the input element by its id
+        var myInput = document.getElementById('prompt');
+
+        // Set focus on the input element
+        myInput.focus();
+    });
+</script>
+
+{% endblock %}
