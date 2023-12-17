@@ -1,5 +1,7 @@
 # BottyBot
 
+![Bots Talking](images/bottalk.jpg)
+
 A simple UI for talking to a llama.cpp model running in server mode.  Give the bot an identity
 and enjoy conversations.
 
