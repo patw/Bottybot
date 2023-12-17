@@ -1,0 +1,20 @@
+{% extends 'bot_base.html' %}
+{% import "bootstrap/wtf.html" as wtf %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-md-8 col-lg-8 mx-lg-auto mx-md-auto">
+            {{ wtf.quick_form(form) }}
+            <br/>
+            <h3>Bot Library</h3>
+            <br/>
+            <h4>
+                The Bot Library is used to select a pre-made bot which can be found in the <i>bots.json</i> file located
+            in your BottyBot installation.  Feel free to edit this file to include whatever personalities you enjoy talking
+            to.
+            </h4>
+        </div>
+    </div>
+</div>
+{% endblock %}

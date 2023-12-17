@@ -6,7 +6,7 @@ from flask_bootstrap import Bootstrap
 
 # Flask forms integrations which save insane amounts of time
 from flask_wtf import FlaskForm
-from wtforms import StringField, SubmitField, PasswordField, TextAreaField, IntegerField, FloatField
+from wtforms import StringField, SubmitField, PasswordField, TextAreaField, IntegerField, FloatField, SelectField
 from wtforms.validators import DataRequired
 
 # Basic python stuff
@@ -34,7 +34,7 @@ users_string = os.environ["USERS"]
 users = json.loads(users_string)
 
 # Load the llm model config
-with open("model.json", 'r') as file:
+with open("model.json", 'r',  encoding='utf-8') as file:
     model = json.load(file)
 
 # Make it pretty because I can't :(
@@ -44,7 +44,7 @@ Bootstrap(app)
 # Chat history looks like an array of events like {"user": "blah", "text": "How do I thing?"}
 def load_chat_history(file_path):
     try:
-        with open(file_path, 'r') as file:
+        with open(file_path, 'r', encoding='utf-8') as file:
             data = json.load(file)
     except FileNotFoundError:
         # If the file doesn't exist, return an empty history
@@ -55,7 +55,7 @@ def load_chat_history(file_path):
         data = []
     return data
 
-# Load the bot config
+# Load the current bot config
 def load_bot_config(file_path):
 
     # Our default Wizard persona.  Use this if there's no user defined config.
@@ -68,11 +68,18 @@ def load_bot_config(file_path):
 
     # Load our user configured bot config if there is one.
     try:
-        with open(file_path, 'r') as file:
+        with open(file_path, 'r',  encoding='utf-8') as file:
             data = json.load(file)
     except:
         pass
 
+    return data
+
+# Load the bot library - A library of useful bots to talk to about different subjects
+def load_bot_library():
+    data = []
+    with open("bots.json", 'r', encoding='utf-8') as file:
+        data = json.load(file)
     return data
 
 # Output the whole history as a text blob
@@ -137,11 +144,17 @@ class BotConfigForm(FlaskForm):
     temperature = FloatField('LLM Temperature', validators=[DataRequired()])
     submit = SubmitField('Save')
 
+# Bot library drop down and selection form
+class BotLibraryForm(FlaskForm): 
+    bot = SelectField('Select Premade Bot', choices=[], validators=[DataRequired()]) 
+    load_bot = SubmitField('Load')
+
 # Amazing, I hate writing this stuff
 class LoginForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired()])
     password = PasswordField('Password', validators=[DataRequired()])
     submit = SubmitField('Login')
+
 
 # Define a decorator to check if the user is authenticated
 # No idea how this works...  Magic.
@@ -154,7 +167,7 @@ def login_required(view):
         return view(**kwargs)        
     return wrapped_view
 
-# The default chunk view with pagination and lexical search
+# The default chat view
 @app.route('/', methods=['GET', 'POST'])
 @login_required
 def index():
@@ -187,14 +200,14 @@ def index():
         history.append(new_history)
 
         # Dump the history to the user file - multitenant!
-        with open(history_file, 'w') as file:
+        with open(history_file, 'w',  encoding='utf-8') as file:
             json.dump(history, file)
         return redirect(url_for('index'))
     
     # Spit out the template
     return render_template('index.html', history=history, form=form)
 
-# The default chunk view with pagination and lexical search
+# Configure the bot
 @app.route('/config', methods=['GET', 'POST'])
 @login_required
 def config():
@@ -202,7 +215,7 @@ def config():
     bot_file = session["user"] + "-bot.json"
     bot_config = load_bot_config(bot_file)    
     form = BotConfigForm()
-
+    
     # Populate the form
     form.name.data = bot_config["name"]
     form.identity.data = bot_config["identity"]
@@ -215,11 +228,38 @@ def config():
         bot_config["identity"] = form_result["identity"]
         bot_config["tokens"] = form_result["tokens"]
         bot_config["temperature"] = form_result["temperature"]
-        with open(bot_file, 'w') as file:
+        with open(bot_file, 'w',  encoding='utf-8') as file:
             json.dump(bot_config, file)
         return redirect(url_for('index'))
 
     return render_template('config.html', form=form)
+
+# Bot Library
+@app.route('/library', methods=['GET', 'POST'])
+@login_required
+def library():
+    form = BotLibraryForm()
+
+    # Populate the bot library drop down
+    bot_library = load_bot_library()
+    for bot in bot_library:
+        form.bot.choices.append(bot["name"])
+
+    # What config do we write to?
+    bot_file = session["user"] + "-bot.json"
+
+    if form.validate_on_submit():
+        form_result = request.form.to_dict(flat=True)
+        bot_selected = form_result["bot"]
+        for dict_item in bot_library:
+            if dict_item["name"] == bot_selected:
+                bot_config = dict_item
+                break
+        with open(bot_file, 'w',  encoding='utf-8') as file:
+            json.dump(bot_config, file)
+        return redirect(url_for('config'))
+
+    return render_template('library.html', form=form)
     
 # Delete chat history, new chat
 @app.route('/new')
