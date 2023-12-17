@@ -4,6 +4,8 @@ A simple UI for talking to a llama.cpp model running in server mode.  Give the b
 and enjoy conversations.
 
 ![BottyBot UI Screenshot](images/ui.png)
+![BottyBot Library](images/bot_library.png)
+![BottyBot Config](images/bot_config.png)
 
 ## Local Installation
 
