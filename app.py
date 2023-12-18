@@ -119,9 +119,6 @@ def llm(user_prompt, bot_config):
             output = "My AI model is not responding try again in a moment 🔥🐳"
             continue
 
-    # Remove that annoying leading string
-    output = output.lstrip('\n')
-
     # Why do you put your own name in the damn output?!
     output = output.lstrip(bot_config["name"] + ":\n")
 
