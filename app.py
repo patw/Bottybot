@@ -130,7 +130,7 @@ def llm(user_prompt, bot_config):
 
 # Flask forms is magic
 class PromptForm(FlaskForm):
-    prompt = StringField('Prompt', validators=[DataRequired()])
+    prompt = StringField('Prompt 💬', validators=[DataRequired()])
     submit = SubmitField('Submit')
 
 # Config form for bot
