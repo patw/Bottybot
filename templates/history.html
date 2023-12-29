@@ -1,0 +1,43 @@
+{% extends 'bootstrap/base.html' %}
+
+{% block title %}
+Botty Bot
+{% endblock %}
+
+{% block head %}
+{{super()}}
+    <link rel="icon" type="image/png" href="static/favicon.ico">
+{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<style>
+    body {
+        background: #f9f9f9;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="border border-primary">
+        <h1 class="display-5">
+            Conversation between {{ user }} and {{ bot }} on {{ date }}
+        </h1>
+    </div>
+    <div class="row">
+        <div class="col-md-12 col-lg-12 mx-lg-auto mx-md-auto">
+            <table class="table table-sm">
+                <tbody>
+                    {% for response in history %}
+                    <tr>
+                        <td>{{ response.user }}</td>
+                        <td style="word-wrap: break-word;">{{ response.text | safe }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

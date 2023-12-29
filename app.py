@@ -15,6 +15,7 @@ import json
 import functools
 import requests
 import time
+import datetime
 
 # Some nice formatting for code
 import misaka
@@ -284,10 +285,20 @@ def reset():
 @app.route('/backup')
 @login_required
 def backup():
+
+    # We could have multiple bots in history but this is fine.
+    bot_file = session["user"] + "-bot.json"
+    bot_config = load_bot_config(bot_file)
+
+    # Load the history to output for export
     history_file = session["user"] + "-history.json"
     history = load_chat_history(history_file)
-    return text_history(history)
-    # finish this
+
+    # Get the current date to tag to the export
+    current_date = datetime.datetime.now()
+    formatted_date = current_date.strftime('%Y-%m-%d')
+
+    return render_template('history.html', history=history, user=session["user"], bot=bot_config["name"], date=formatted_date)
 
 # Login/logout routes that rely on the user being stored in session
 @app.route('/login', methods=['GET', 'POST'])
