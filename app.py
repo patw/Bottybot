@@ -17,6 +17,39 @@ import requests
 import time
 import datetime
 
+# Mistral Stuff
+from mistralai.client import MistralClient
+from mistralai.models.chat_completion import ChatMessage
+
+# OpenAI Stuff
+from openai import OpenAI
+
+# Load the API keys for mistral and openai
+mistral_key = os.environ["MISTRAL_API_KEY"]
+oai_key = os.environ["OPENAI_API_KEY"]
+
+# We might not have these configured
+mistral_client = None
+oai_client = None
+
+# optionally connect the clients
+if mistral_key:
+    mistral_client = MistralClient(api_key=os.environ["MISTRAL_API_KEY"])
+
+if oai_key:
+    oai_client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+
+# All configurable models
+models = [
+    "llama-cpp", 
+    "mistral-tiny",
+    "mistral-small",
+    "mistral-medium",
+    "gpt-3.5-turbo",
+    "gpt-4-turbo",
+    "gpt-4"
+]
+
 # Some nice formatting for code
 import misaka
 
@@ -90,6 +123,27 @@ def text_history(history):
         text_history = text_history + item["user"] + ": " + item["text"] + "\n"
     return text_history
 
+def llm_proxy(prompt, bot_config, model_type):
+    if model_type == "llama-cpp":
+        print("llama-cpp")
+        return llm(prompt, bot_config)
+    if model_type.startswith("mistral-"):
+        return llm_mistral(prompt, model_type)
+    if model_type.startswith("gpt-"):
+        return llm_oai(prompt, model_type)
+
+# Query mistral models
+def llm_mistral(user_promot, model_name):
+    messages = [ChatMessage(role="user", content=user_promot)]
+    response = mistral_client.chat(model=model_name, temperature=0.7, messages=messages)
+    return {"user": model_name, "text": response.choices[0].message.content}
+
+# Query OpenAI models
+def llm_oai(user_promot, model_name):
+    messages = [ChatMessage(role="user", content=user_promot)]
+    response = oai_client.chat.completions.create(model=model_name, temperature=0.7, messages=messages)
+    return {"user": model_name, "text": response.choices[0].message.content}
+
 def llm(user_prompt, bot_config):
 
      # Build the prompt
@@ -132,6 +186,7 @@ def llm(user_prompt, bot_config):
 # Flask forms is magic
 class PromptForm(FlaskForm):
     prompt = StringField('Prompt 💬', validators=[DataRequired()])
+    model_type = SelectField('Model', choices=models, validators=[DataRequired()])
     submit = SubmitField('Submit')
 
 # Config form for bot
@@ -173,6 +228,9 @@ def index():
     # The single input box and submit button
     form = PromptForm()
 
+    if "model_type" in session:
+        form.model_type.data = session["model_type"]
+
     # Load the history array but remove items past 5
     history_file = session["user"] + "-history.json"
     history = load_chat_history(history_file)
@@ -194,7 +252,8 @@ def index():
         prompt = text_history(history) + form_result["prompt"]
 
         # Prompt the LLM, add that to history too!
-        new_history = llm(prompt, bot_config)
+        session["model_type"] = form_result["model_type"]
+        new_history = llm_proxy(prompt, bot_config, form_result["model_type"])
         history.append(new_history)
 
         # Dump the history to the user file - multitenant!
