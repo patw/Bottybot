@@ -46,7 +46,7 @@ models = [
     "mistral-small",
     "mistral-medium",
     "gpt-3.5-turbo",
-    "gpt-4-turbo",
+    "gpt-4-turbo-preview",
     "gpt-4"
 ]
 
@@ -126,25 +126,29 @@ def text_history(history):
 def llm_proxy(prompt, bot_config, model_type):
     if model_type == "llama-cpp":
         print("llama-cpp")
-        return llm(prompt, bot_config)
+        return llm(prompt, model_type, bot_config)
     if model_type.startswith("mistral-"):
-        return llm_mistral(prompt, model_type)
+        return llm_mistral(prompt, model_type, bot_config)
     if model_type.startswith("gpt-"):
-        return llm_oai(prompt, model_type)
+        return llm_oai(prompt, model_type, bot_config)
 
 # Query mistral models
-def llm_mistral(user_promot, model_name):
-    messages = [ChatMessage(role="user", content=user_promot)]
-    response = mistral_client.chat(model=model_name, temperature=0.7, messages=messages)
-    return {"user": model_name, "text": response.choices[0].message.content}
+def llm_mistral(prompt, model_name, bot_config):
+    messages = [ChatMessage(role="system", content=bot_config["identity"]), ChatMessage(role="user", content=prompt)]
+    response = mistral_client.chat(model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
+    output = misaka.html(response.choices[0].message.content, extensions=misaka.EXT_FENCED_CODE)
+    user = bot_config["name"] + " " + model_name
+    return {"user": user, "text": output}
 
 # Query OpenAI models
-def llm_oai(user_promot, model_name):
-    messages = [ChatMessage(role="user", content=user_promot)]
-    response = oai_client.chat.completions.create(model=model_name, temperature=0.7, messages=messages)
-    return {"user": model_name, "text": response.choices[0].message.content}
+def llm_oai(prompt, model_name, bot_config):
+    messages = [ChatMessage(role="system", content=bot_config["identity"]), ChatMessage(role="user", content=prompt)]
+    response = oai_client.chat.completions.create(model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
+    output = misaka.html(response.choices[0].message.content, extensions=misaka.EXT_FENCED_CODE)
+    user = bot_config["name"] + " " + model_name
+    return {"user": user, "text": output}
 
-def llm(user_prompt, bot_config):
+def llm(user_prompt, model_name, bot_config):
 
      # Build the prompt
     prompt = model["prompt_format"].replace("{system}", bot_config["identity"])
@@ -181,7 +185,8 @@ def llm(user_prompt, bot_config):
     #output = output.replace("\n", "<br>")
     output = misaka.html(output, extensions=misaka.EXT_FENCED_CODE)
 
-    return {"user": bot_config["name"], "text": output}
+    user = bot_config["name"] + " " + model_name
+    return {"user": user, "text": output}
 
 # Flask forms is magic
 class PromptForm(FlaskForm):
