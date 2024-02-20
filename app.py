@@ -17,38 +17,10 @@ import requests
 import time
 import datetime
 
-# Mistral Stuff
+# Import OpenAI and Mistral libraries
+from openai import OpenAI
 from mistralai.client import MistralClient
 from mistralai.models.chat_completion import ChatMessage
-
-# OpenAI Stuff
-from openai import OpenAI
-
-# Load the API keys for mistral and openai
-mistral_key = os.environ["MISTRAL_API_KEY"]
-oai_key = os.environ["OPENAI_API_KEY"]
-
-# We might not have these configured
-mistral_client = None
-oai_client = None
-
-# optionally connect the clients
-if mistral_key:
-    mistral_client = MistralClient(api_key=os.environ["MISTRAL_API_KEY"])
-
-if oai_key:
-    oai_client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
-
-# All configurable models
-models = [
-    "llama-cpp", 
-    "mistral-tiny",
-    "mistral-small",
-    "mistral-medium",
-    "gpt-3.5-turbo",
-    "gpt-4-turbo-preview",
-    "gpt-4"
-]
 
 # Some nice formatting for code
 import misaka
@@ -62,6 +34,24 @@ app = Flask(__name__)
 
 # Session key
 app.config['SECRET_KEY'] = os.environ["SECRET_KEY"]
+
+# Start with just a local model
+models = [
+    "llama-cpp"
+]
+
+# optionally connect the clients
+if "MISTRAL_API_KEY" in os.environ:    
+    models.append("mistral-tiny")
+    models.append("mistral-small")
+    models.append("mistral-medium")
+    mistral_client = MistralClient(api_key=os.environ["MISTRAL_API_KEY"])
+
+if "OPENAI_API_KEY" in os.environ:
+    models.append("gpt-3.5-turbo")
+    models.append("gpt-4-turbo-preview")
+    models.append("gpt-4")
+    oai_client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
 # User Auth
 users_string = os.environ["USERS"]
@@ -124,8 +114,8 @@ def text_history(history):
     return text_history
 
 def llm_proxy(prompt, bot_config, model_type):
+    print(model_type)
     if model_type == "llama-cpp":
-        print("llama-cpp")
         return llm(prompt, model_type, bot_config)
     if model_type.startswith("mistral-"):
         return llm_mistral(prompt, model_type, bot_config)
