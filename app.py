@@ -45,6 +45,7 @@ if "MISTRAL_API_KEY" in os.environ:
     models.append("mistral-tiny")
     models.append("mistral-small")
     models.append("mistral-medium")
+    models.append("mistral-large")
     mistral_client = MistralClient(api_key=os.environ["MISTRAL_API_KEY"])
 
 if "OPENAI_API_KEY" in os.environ:
