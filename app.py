@@ -21,6 +21,7 @@ import datetime
 from openai import OpenAI
 from mistralai.client import MistralClient
 from mistralai.models.chat_completion import ChatMessage
+import anthropic
 
 # Some nice formatting for code
 import misaka
@@ -53,6 +54,11 @@ if "OPENAI_API_KEY" in os.environ:
     models.append("gpt-4-turbo-preview")
     models.append("gpt-4")
     oai_client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+
+if "ANTHROPIC_API_KEY" in os.environ:
+    models.append("claude-3-opus-20240229")
+    models.append("claude-3-sonnet-20240229")
+    anthropic_client =anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
 
 # User Auth
 users_string = os.environ["USERS"]
@@ -122,6 +128,8 @@ def llm_proxy(prompt, bot_config, model_type):
         return llm_mistral(prompt, model_type, bot_config)
     if model_type.startswith("gpt-"):
         return llm_oai(prompt, model_type, bot_config)
+    if model_type.startswith("claude-"):
+        return llm_anthropic(prompt, model_type, bot_config)
 
 # Query mistral models
 def llm_mistral(prompt, model_name, bot_config):
@@ -136,6 +144,31 @@ def llm_oai(prompt, model_name, bot_config):
     messages = [ChatMessage(role="system", content=bot_config["identity"]), ChatMessage(role="user", content=prompt)]
     response = oai_client.chat.completions.create(model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
     output = misaka.html(response.choices[0].message.content, extensions=misaka.EXT_FENCED_CODE)
+    user = bot_config["name"] + " " + model_name
+    return {"user": user, "text": output}
+
+# Query Anthropic models
+def llm_anthropic(prompt, model_name, bot_config):
+
+    message = anthropic_client.messages.create(
+        model=model_name,
+        max_tokens=4096,
+        temperature=float(bot_config["temperature"]),
+        system=bot_config["identity"],
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": prompt
+                    }
+                ]
+            }
+        ]
+    )
+    print(message.content[0].text)
+    output = misaka.html(message.content[0].text, extensions=misaka.EXT_FENCED_CODE)
     user = bot_config["name"] + " " + model_name
     return {"user": user, "text": output}
 

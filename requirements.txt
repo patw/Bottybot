@@ -20,3 +20,6 @@ OpenAI
 
 # Mistral AI
 mistralai
+
+# Anthropic 
+anthropic
