@@ -58,6 +58,7 @@ if "OPENAI_API_KEY" in os.environ:
 if "ANTHROPIC_API_KEY" in os.environ:
     models.append("claude-3-opus-20240229")
     models.append("claude-3-sonnet-20240229")
+    models.append("claude-3-haiku-20240307")
     anthropic_client =anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
 
 # User Auth
