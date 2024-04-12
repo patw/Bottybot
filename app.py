@@ -114,6 +114,16 @@ def load_bot_library():
         data = json.load(file)
     return data
 
+# Load the augmentation file if there is one. This is used to augment the prompt with additional data
+def load_augmentation(file_path):
+    data = ""
+    try:
+        with open(file_path, 'r', encoding='utf-8') as file:
+            data = json.load(file)
+    except:
+        pass
+    return data
+
 # Output the whole history as a text blob
 def text_history(history):
     text_history = ""
@@ -232,12 +242,17 @@ class BotLibraryForm(FlaskForm):
     bot = SelectField('Select Premade Bot', choices=[], validators=[DataRequired()]) 
     load_bot = SubmitField('Load')
 
+# Augmentation edit/clear form
+class AugmentationForm(FlaskForm): 
+    augmentation = TextAreaField('Augmentation')
+    save = SubmitField('Save')
+    clear = SubmitField('Clear')
+
 # Amazing, I hate writing this stuff
 class LoginForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired()])
     password = PasswordField('Password', validators=[DataRequired()])
     submit = SubmitField('Login')
-
 
 # Define a decorator to check if the user is authenticated
 # No idea how this works...  Magic.
@@ -269,7 +284,11 @@ def index():
 
     # Load the bot config
     bot_file = session["user"] + "-bot.json"
-    bot_config = load_bot_config(bot_file)   
+    bot_config = load_bot_config(bot_file)
+
+    # Load the augmentation
+    augment_file = session["user"] + "-augment.json"
+    augmentation = load_augmentation(augment_file)  
 
     # If user is prompting send it
     if form.validate_on_submit():
@@ -281,9 +300,9 @@ def index():
         history.append(new_history)
         prompt = text_history(history) + form_result["prompt"]
 
-        # Prompt the LLM, add that to history too!
+        # Prompt the LLM (with the augmentation), add that to history too!
         session["model_type"] = form_result["model_type"]
-        new_history = llm_proxy(prompt, bot_config, form_result["model_type"])
+        new_history = llm_proxy(augmentation + prompt, bot_config, form_result["model_type"])
         history.append(new_history)
 
         # Dump the history to the user file - multitenant!
@@ -320,6 +339,33 @@ def config():
         return redirect(url_for('index'))
 
     return render_template('config.html', form=form)
+
+# Configure the prompt augmentation
+@app.route('/augment', methods=['GET', 'POST'])
+@login_required
+def augment():
+    augment_file = session["user"] + "-augment.json"
+    augmentation = load_augmentation(augment_file)  
+    form = AugmentationForm()
+
+    # Populate the form
+    form.augmentation.data = augmentation
+
+    # Save the augmentation on a per user basis
+    if form.validate_on_submit():
+        form_result = request.form.to_dict(flat=True)
+        # Clear the file or store it
+        if "clear" in form_result:
+            try:
+                os.remove(augment_file)
+            except:
+                pass
+        else:
+            with open(augment_file, 'w',  encoding='utf-8') as file:
+                json.dump(form_result["augmentation"], file)
+        return redirect(url_for('index'))
+
+    return render_template('augment.html', form=form)
 
 # Bot Library
 @app.route('/library', methods=['GET', 'POST'])

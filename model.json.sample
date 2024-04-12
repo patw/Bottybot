@@ -1,0 +1,5 @@
+{
+    "llama_endpoint": "http://localhost:8080/completion",
+    "prompt_format": "<|im_start|>system\n{system}<|im_end|>\n<|im_start|>user\n{prompt}<|im_end|>\n<|im_start|>assistant\n",
+    "stop_tokens": ["<|im_end|>"]
+}

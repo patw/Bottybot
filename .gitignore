@@ -6,16 +6,8 @@ __pycache__/
 # C extensions
 *.so
 
-# LLM Models
-*.gguf
-
-# Chat history
-*-history.json
-
-# Bot configs
-*-bot.json
-
-model.json
+# Config and history files
+*.json
 
 # Distribution / packaging
 .Python
