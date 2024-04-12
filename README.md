@@ -2,8 +2,7 @@
 
 ![Bots Talking](images/bottalk.jpg)
 
-A simple UI for talking to a llama.cpp model running in server mode.  Give the bot an identity
-and enjoy conversations.
+A simple UI for talking to a model hosted on llama.cpp in server mode, or OpenAI, Mistral.ai and Anthropic models.  Give the bot an identity and enjoy conversations.  All providers can be configured at the same time allowing you to swap between models as needed. 
 
 ![BottyBot UI Screenshot](images/ui.png)
 ![BottyBot Library](images/bot_library.png)
@@ -15,10 +14,27 @@ and enjoy conversations.
 pip install -r requirements.txt
 ```
 
+## Docker Installation
+
+```
+git pull https://github.com/patw/Bottybot.git
+cd Bottybot
+```
+
+* Follow the instructions below on configuring the .env, model below
+
+```
+docker build -t bottybot .
+docker run -d -p 7860:5000 bottybot
+```
+
+## Configuration
+
 Copy the sample.env file to .env and create a proper user/password.
 
-Edit the model.json to have it point to the URL for your llama.cpp service.  The default prompting format
-is ChatML, but feel free to change it to work with whatever model you use.  HINT:  Most are using ChatML now!
+Copy the model.json.sample to model.json and point to the URL for your llama.cpp running in sever mode.  
+The default prompting format is ChatML, but feel free to change it to work with whatever model you use.  
+*HINT:  Most are using ChatML now!*
 
 ## Downloading an LLM model
 
@@ -29,7 +45,9 @@ https://huggingface.co/TheBloke/OpenHermes-2.5-Mistral-7B-GGUF/tree/main
 
 I'd suggest the Q6 quant for GPU and Q4_K_M for CPU
 
-## Running a model on llama.cpp in API mode
+## Running a model on llama.cpp in Server mode (optional)
+
+This step is entirely optional now if you just want to use OpenAI, Mistral.ai or Anthropic.
 
 ### Windows
 
