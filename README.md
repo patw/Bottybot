@@ -21,7 +21,7 @@ git pull https://github.com/patw/Bottybot.git
 cd Bottybot
 ```
 
-* Follow the instructions below on configuring the .env, model below
+Follow the instructions below on configuring the .env and model.json
 
 ```
 docker build -t bottybot .
