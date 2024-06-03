@@ -1,5 +1,5 @@
 # Basic flask stuff for building http APIs and rendering html templates
-from flask import Flask, render_template, redirect, url_for, request, session, send_from_directory
+from flask import Flask, render_template, redirect, url_for, request, session, jsonify
 
 # Bootstrap integration with flask so we can make pretty pages
 from flask_bootstrap import Bootstrap
@@ -454,22 +454,23 @@ def logout():
     return redirect(url_for('login'))
 
 # Basic Chat API for some scripts to consume, right now only supports wizard persona
-@app.route('/api/chat')
+@app.route('/api/chat', methods=['POST'])
 def api_chat():
 
-    # Validated
-    api_key = request.args.get('api_key')
+    # Validated API key
+    api_key = request.form.get('api_key')  # Use request.form.get instead of request.args.get for POST requests
     if api_key != BOTTY_KEY:
-        return {"error": "Invalid API Key"}
+        return jsonify({"error": "Invalid API Key"})
 
     # Get the API parameters and bail out if they're wrong
-    prompt = request.args.get('prompt')
-    model_type = request.args.get('model_type')
+    prompt = request.form.get('prompt')
+    model_type = request.form.get('model_type')
     if not prompt or not model_type:
-        return {"error": "You need to send a prompt and the model name you want to use eg. llama-cpp"}
-    
+        return jsonify({"error": "You need to send a prompt and the model name you want to use eg. llama-cpp"})
+
     # Yeah this is hacky but we want this to fail and load
     # the default wizard persona
-    bot_config = load_bot_config("null")
+    bot_config = load_bot_config.load("null")
+
     result = llm_proxy(prompt, bot_config, model_type)
-    return result
+    return jsonify(result)
