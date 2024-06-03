@@ -470,7 +470,7 @@ def api_chat():
 
     # Yeah this is hacky but we want this to fail and load
     # the default wizard persona
-    bot_config = load_bot_config.load("null")
+    bot_config = load_bot_config("null")
 
     result = llm_proxy(prompt, bot_config, model_type)
     return jsonify(result)
