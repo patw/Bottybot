@@ -36,6 +36,9 @@ app = Flask(__name__)
 # Session key
 app.config['SECRET_KEY'] = os.environ["SECRET_KEY"]
 
+# BottyBot API Key for /api/chat endpoint
+BOTTY_KEY = os.environ["BOTTY_KEY"]
+
 # Start with just a local model
 models = [
     "llama-cpp"
@@ -133,7 +136,6 @@ def text_history(history):
     return text_history
 
 def llm_proxy(prompt, bot_config, model_type):
-    print(model_type)
     if model_type == "llama-cpp":
         return llm(prompt, model_type, bot_config)
     if model_type.startswith("mistral-"):
@@ -147,17 +149,15 @@ def llm_proxy(prompt, bot_config, model_type):
 def llm_mistral(prompt, model_name, bot_config):
     messages = [ChatMessage(role="system", content=bot_config["identity"]), ChatMessage(role="user", content=prompt)]
     response = mistral_client.chat(model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
-    output = misaka.html(response.choices[0].message.content, extensions=misaka.EXT_FENCED_CODE)
     user = bot_config["name"] + " " + model_name
-    return {"user": user, "text": output}
+    return {"user": user, "text": response.choices[0].message.content}
 
 # Query OpenAI models
 def llm_oai(prompt, model_name, bot_config):
     messages = [ChatMessage(role="system", content=bot_config["identity"]), ChatMessage(role="user", content=prompt)]
     response = oai_client.chat.completions.create(model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
-    output = misaka.html(response.choices[0].message.content, extensions=misaka.EXT_FENCED_CODE)
     user = bot_config["name"] + " " + model_name
-    return {"user": user, "text": output}
+    return {"user": user, "text": response.choices[0].message.content}
 
 # Query Anthropic models
 def llm_anthropic(prompt, model_name, bot_config):
@@ -178,11 +178,9 @@ def llm_anthropic(prompt, model_name, bot_config):
                 ]
             }
         ]
-    )
-    print(message.content[0].text)
-    output = misaka.html(message.content[0].text, extensions=misaka.EXT_FENCED_CODE)
+    )  
     user = bot_config["name"] + " " + model_name
-    return {"user": user, "text": output}
+    return {"user": user, "text": message.content[0].text}
 
 def llm(user_prompt, model_name, bot_config):
 
@@ -216,10 +214,6 @@ def llm(user_prompt, model_name, bot_config):
 
     # Why do you put your own name in the damn output?!
     output = output.lstrip(bot_config["name"] + ":\n")
-
-    # HTML-ify the output
-    #output = output.replace("\n", "<br>")
-    output = misaka.html(output, extensions=misaka.EXT_FENCED_CODE)
 
     user = bot_config["name"] + " " + model_name
     return {"user": user, "text": output}
@@ -304,6 +298,7 @@ def index():
         # Prompt the LLM (with the augmentation), add that to history too!
         session["model_type"] = form_result["model_type"]
         new_history = llm_proxy(augmentation + prompt, bot_config, form_result["model_type"])
+        # Use Misaka library to format the output
         history.append(new_history)
 
         # Dump the history to the user file - multitenant!
@@ -311,7 +306,9 @@ def index():
             json.dump(history, file)
         return redirect(url_for('index'))
     
-    # Spit out the template
+    # Spit out the template with formatted strings
+    for dictionary in history:
+        dictionary["text"] = misaka.html(dictionary["text"], extensions=misaka.EXT_FENCED_CODE)
     return render_template('index.html', history=history, form=form)
 
 # Configure the bot
@@ -434,6 +431,9 @@ def backup():
     current_date = datetime.datetime.now()
     formatted_date = current_date.strftime('%Y-%m-%d')
 
+    # Spit out the template with formatted strings
+    for dictionary in history:
+        dictionary["text"] = misaka.html(dictionary["text"], extensions=misaka.EXT_FENCED_CODE)
     return render_template('history.html', history=history, user=session["user"], bot=bot_config["name"], date=formatted_date)
 
 # Login/logout routes that rely on the user being stored in session
@@ -452,3 +452,24 @@ def login():
 def logout():
     session["user"] = None
     return redirect(url_for('login'))
+
+# Basic Chat API for some scripts to consume, right now only supports wizard persona
+@app.route('/api/chat')
+def api_chat():
+
+    # Validated
+    api_key = request.args.get('api_key')
+    if api_key != BOTTY_KEY:
+        return {"error": "Invalid API Key"}
+
+    # Get the API parameters and bail out if they're wrong
+    prompt = request.args.get('prompt')
+    model_type = request.args.get('model_type')
+    if not prompt or not model_type:
+        return {"error": "You need to send a prompt and the model name you want to use eg. llama-cpp"}
+    
+    # Yeah this is hacky but we want this to fail and load
+    # the default wizard persona
+    bot_config = load_bot_config("null")
+    result = llm_proxy(prompt, bot_config, model_type)
+    return result
