@@ -212,9 +212,6 @@ def llm(user_prompt, model_name, bot_config):
             output = "My AI model is not responding try again in a moment 🔥🐳"
             continue
 
-    # Why do you put your own name in the damn output?!
-    output = output.lstrip(bot_config["name"] + ":\n")
-
     user = bot_config["name"] + " " + model_name
     return {"user": user, "text": output}
 
@@ -290,10 +287,12 @@ def index():
         # Get the form variables
         form_result = request.form.to_dict(flat=True)
 
-        # Create history for the user's prompt
-        new_history = {"user": session["user"], "text": form_result["prompt"]}
-        history.append(new_history)
-        prompt = text_history(history) + form_result["prompt"]
+        # Create the prompt with the chat history
+        prompt = "Chat history:\n" + text_history(history) + "\n" + form_result["prompt"]
+
+        # This new prompt is now history
+        new_prompt = {"user": session["user"], "text": form_result["prompt"]}
+        history.append(new_prompt)
 
         # Prompt the LLM (with the augmentation), add that to history too!
         session["model_type"] = form_result["model_type"]
