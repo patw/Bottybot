@@ -45,11 +45,13 @@ models = [
 ]
 
 # optionally connect the clients
-if "MISTRAL_API_KEY" in os.environ:    
-    models.append("mistral-tiny")
-    models.append("mistral-small")
-    models.append("mistral-medium")
-    models.append("mistral-large")
+if "MISTRAL_API_KEY" in os.environ:
+    models.append("open-mistral-7b")
+    models.append("open-mixtral-8x7b")
+    models.append("open-mixtral-8x22b")  
+    models.append("mistral-small-latest")
+    models.append("mistral-medium-latest")
+    models.append("mistral-large-latest")
     mistral_client = MistralClient(api_key=os.environ["MISTRAL_API_KEY"])
 
 if "OPENAI_API_KEY" in os.environ:
@@ -139,6 +141,8 @@ def llm_proxy(prompt, bot_config, model_type):
     if model_type == "llama-cpp":
         return llm(prompt, model_type, bot_config)
     if model_type.startswith("mistral-"):
+        return llm_mistral(prompt, model_type, bot_config)
+    if model_type.startswith("open-"):
         return llm_mistral(prompt, model_type, bot_config)
     if model_type.startswith("gpt-"):
         return llm_oai(prompt, model_type, bot_config)
