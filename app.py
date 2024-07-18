@@ -58,6 +58,7 @@ if "OPENAI_API_KEY" in os.environ:
     models.append("gpt-3.5-turbo")
     models.append("gpt-4-turbo")
     models.append("gpt-4o")
+    models.append("gpt-4o-mini")
     models.append("gpt-4")
     oai_client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
