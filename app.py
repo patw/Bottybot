@@ -17,14 +17,12 @@ import requests
 import time
 import datetime
 
-# Import OpenAI and Mistral libraries
-from openai import OpenAI
-from mistralai.client import MistralClient
-from mistralai.models.chat_completion import ChatMessage
-import anthropic
-
 # Some nice formatting for code
 import misaka
+
+# Generic chatmessage utility function
+# This works with all the providers, not just mistral
+from mistralai.models.chat_completion import ChatMessage
 
 # Nice way to load environment variables for deployments
 from dotenv import load_dotenv
@@ -45,29 +43,32 @@ models = [
 ]
 
 # optionally connect the clients
-if "MISTRAL_API_KEY" in os.environ:
-    models.append("open-mistral-7b")
-    models.append("open-mixtral-8x7b")
-    models.append("open-mixtral-8x22b")  
+if "MISTRAL_API_KEY" in os.environ: 
     models.append("mistral-small-latest")
     models.append("mistral-medium-latest")
     models.append("mistral-large-latest")
+    from mistralai.client import MistralClient
     mistral_client = MistralClient(api_key=os.environ["MISTRAL_API_KEY"])
 
 if "OPENAI_API_KEY" in os.environ:
-    models.append("gpt-3.5-turbo")
     models.append("gpt-4-turbo")
     models.append("gpt-4o")
     models.append("gpt-4o-mini")
     models.append("gpt-4")
+    from openai import OpenAI
     oai_client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
 if "ANTHROPIC_API_KEY" in os.environ:
-    models.append("claude-3-opus-20240229")
-    models.append("claude-3-sonnet-20240229")
     models.append("claude-3-haiku-20240307")
     models.append("claude-3-5-sonnet-20240620")
-    anthropic_client =anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+    import anthropic
+    anthropic_client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+
+if "CEREBRAS_API_KEY" in os.environ:
+    models.append("cerebras-llama3.1-8b")
+    models.append("cerebras-llama3.1-70b")
+    from cerebras.cloud.sdk import Cerebras
+    cerebras_client = Cerebras(api_key=os.environ.get("CEREBRAS_API_KEY"))
 
 # User Auth
 users_string = os.environ["USERS"]
@@ -150,6 +151,8 @@ def llm_proxy(prompt, bot_config, model_type):
         return llm_oai(prompt, model_type, bot_config)
     if model_type.startswith("claude-"):
         return llm_anthropic(prompt, model_type, bot_config)
+    if model_type.startswith("cerebras-"):
+        return llm_cerebras(prompt, model_type, bot_config)
 
 # Query mistral models
 def llm_mistral(prompt, model_name, bot_config):
@@ -187,6 +190,14 @@ def llm_anthropic(prompt, model_name, bot_config):
     )  
     user = bot_config["name"] + " " + model_name
     return {"user": user, "text": message.content[0].text}
+
+# Query OpenAI models
+def llm_cerebras(prompt, model_name, bot_config):
+    model_name = model_name.replace("cerebras-", "")
+    messages = [ChatMessage(role="system", content=bot_config["identity"]), ChatMessage(role="user", content=prompt)]
+    response = cerebras_client.chat.completions.create(model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
+    user = bot_config["name"] + " " + model_name
+    return {"user": user, "text": response.choices[0].message.content}
 
 def llm(user_prompt, model_name, bot_config):
 

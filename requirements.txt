@@ -23,3 +23,6 @@ mistralai==0.0.12
 
 # Anthropic 
 anthropic
+
+# Cerebras
+cerebras_cloud_sdk
