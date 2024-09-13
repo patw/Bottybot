@@ -55,6 +55,8 @@ if "OPENAI_API_KEY" in os.environ:
     models.append("gpt-4o")
     models.append("gpt-4o-mini")
     models.append("gpt-4")
+    models.append("o1-preview")
+    models.append("o1-mini")
     from openai import OpenAI
     oai_client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
@@ -147,7 +149,7 @@ def llm_proxy(prompt, bot_config, model_type):
         return llm_mistral(prompt, model_type, bot_config)
     if model_type.startswith("open-"):
         return llm_mistral(prompt, model_type, bot_config)
-    if model_type.startswith("gpt-"):
+    if model_type.startswith("gpt-") or model_type.startswith("o1-"):
         return llm_oai(prompt, model_type, bot_config)
     if model_type.startswith("claude-"):
         return llm_anthropic(prompt, model_type, bot_config)
