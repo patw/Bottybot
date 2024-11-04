@@ -61,7 +61,7 @@ if "OPENAI_API_KEY" in os.environ:
     oai_client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
 if "ANTHROPIC_API_KEY" in os.environ:
-    models.append("claude-3-haiku-20240307")
+    models.append("claude-3-5-haiku-20241022")
     models.append("claude-3-5-sonnet-latest")
     import anthropic
     anthropic_client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
