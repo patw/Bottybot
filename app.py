@@ -72,6 +72,13 @@ if "CEREBRAS_API_KEY" in os.environ:
     from cerebras.cloud.sdk import Cerebras
     cerebras_client = Cerebras(api_key=os.environ.get("CEREBRAS_API_KEY"))
 
+if "GEMINI_API_KEY" in os.environ:
+    models.append("gemini-1.5-flash")
+    models.append("gemini-1.5-flash-8b")
+    models.append("gemini-1.5-pro")
+    from openai import OpenAI
+    gemini_client = OpenAI(api_key=os.environ["GEMINI_API_KEY"], base_url="https://generativelanguage.googleapis.com/v1beta/")
+
 # User Auth
 users_string = os.environ["USERS"]
 users = json.loads(users_string)
@@ -155,6 +162,8 @@ def llm_proxy(prompt, bot_config, model_type):
         return llm_anthropic(prompt, model_type, bot_config)
     if model_type.startswith("cerebras-"):
         return llm_cerebras(prompt, model_type, bot_config)
+    if model_type.startswith("gemini-"):
+        return llm_gemini(prompt, model_type, bot_config)
 
 # Query mistral models
 def llm_mistral(prompt, model_name, bot_config):
@@ -193,11 +202,18 @@ def llm_anthropic(prompt, model_name, bot_config):
     user = bot_config["name"] + " " + model_name
     return {"user": user, "text": message.content[0].text}
 
-# Query OpenAI models
+# Query Cerebras models
 def llm_cerebras(prompt, model_name, bot_config):
     model_name = model_name.replace("cerebras-", "")
     messages = [ChatMessage(role="system", content=bot_config["identity"]), ChatMessage(role="user", content=prompt)]
     response = cerebras_client.chat.completions.create(model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
+    user = bot_config["name"] + " " + model_name
+    return {"user": user, "text": response.choices[0].message.content}
+
+# Google Gemini
+def llm_gemini(prompt, model_name, bot_config):
+    messages = [ChatMessage(role="system", content=bot_config["identity"]), ChatMessage(role="user", content=prompt)]
+    response = gemini_client.chat.completions.create(model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
     user = bot_config["name"] + " " + model_name
     return {"user": user, "text": response.choices[0].message.content}
 
