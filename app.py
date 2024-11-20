@@ -156,8 +156,10 @@ def llm_proxy(prompt, bot_config, model_type):
         return llm_mistral(prompt, model_type, bot_config)
     if model_type.startswith("open-"):
         return llm_mistral(prompt, model_type, bot_config)
-    if model_type.startswith("gpt-") or model_type.startswith("o1-"):
+    if model_type.startswith("gpt-"):
         return llm_oai(prompt, model_type, bot_config)
+    if model_type.startswith("o1-"):
+        return llm_o1(prompt, model_type, bot_config)
     if model_type.startswith("claude-"):
         return llm_anthropic(prompt, model_type, bot_config)
     if model_type.startswith("cerebras-"):
@@ -176,6 +178,13 @@ def llm_mistral(prompt, model_name, bot_config):
 def llm_oai(prompt, model_name, bot_config):
     messages = [ChatMessage(role="system", content=bot_config["identity"]), ChatMessage(role="user", content=prompt)]
     response = oai_client.chat.completions.create(model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
+    user = bot_config["name"] + " " + model_name
+    return {"user": user, "text": response.choices[0].message.content}
+
+# Query OpenAI o1 models, without a system message.  O1 class models don't support identities or temperature.
+def llm_o1(prompt, model_name, bot_config):
+    messages = [ChatMessage(role="user", content=prompt)]
+    response = oai_client.chat.completions.create(model=model_name, messages=messages)
     user = bot_config["name"] + " " + model_name
     return {"user": user, "text": response.choices[0].message.content}
 
