@@ -19,7 +19,7 @@ misaka
 OpenAI
 
 # Mistral AI
-mistralai==0.0.12
+mistralai
 
 # Anthropic 
 anthropic

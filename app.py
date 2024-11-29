@@ -20,13 +20,15 @@ import datetime
 # Some nice formatting for code
 import misaka
 
-# Generic chatmessage utility function
-# This works with all the providers, not just mistral
-from mistralai.models.chat_completion import ChatMessage
+# Need OpenAI for a few providers including local with llama.cpp server or ollama server
+from openai import OpenAI
 
 # Nice way to load environment variables for deployments
 from dotenv import load_dotenv
 load_dotenv()
+
+# The total amount of message history in the chat
+HISTORY_LENGTH = 8
 
 # Create the Flask app object
 app = Flask(__name__)
@@ -37,55 +39,56 @@ app.config['SECRET_KEY'] = os.environ["SECRET_KEY"]
 # BottyBot API Key for /api/chat endpoint
 BOTTY_KEY = os.environ["BOTTY_KEY"]
 
-# Start with just a local model
-models = [
-    "llama-cpp"
-]
+# Configure all available models based on configured keys
+models = []
 
-# optionally connect the clients
+# Local models are configured as a dict in .env, they need to start with "local-"
+if "LOCAL_MODELS" in os.environ:
+    local_models = json.loads(os.environ["LOCAL_MODELS"])
+    for model_name in local_models:
+        models.append(model_name)
+
+# Configure MistralAI
 if "MISTRAL_API_KEY" in os.environ: 
     models.append("mistral-small-latest")
     models.append("mistral-medium-latest")
     models.append("mistral-large-latest")
-    from mistralai.client import MistralClient
-    mistral_client = MistralClient(api_key=os.environ["MISTRAL_API_KEY"])
+    from mistralai import Mistral
+    mistral_client = Mistral(api_key=os.environ["MISTRAL_API_KEY"])
 
+# Configure OpenAI
 if "OPENAI_API_KEY" in os.environ:
-    models.append("gpt-4-turbo")
     models.append("gpt-4o")
     models.append("gpt-4o-mini")
     models.append("gpt-4")
     models.append("o1-preview")
     models.append("o1-mini")
-    from openai import OpenAI
     oai_client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
+# Configure Anthropic
 if "ANTHROPIC_API_KEY" in os.environ:
     models.append("claude-3-5-haiku-20241022")
     models.append("claude-3-5-sonnet-latest")
     import anthropic
     anthropic_client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
 
+# Configure Cerebras
 if "CEREBRAS_API_KEY" in os.environ:
     models.append("cerebras-llama3.1-8b")
     models.append("cerebras-llama3.1-70b")
     from cerebras.cloud.sdk import Cerebras
     cerebras_client = Cerebras(api_key=os.environ.get("CEREBRAS_API_KEY"))
 
+# Configure Google Gemini
 if "GEMINI_API_KEY" in os.environ:
     models.append("gemini-1.5-flash")
     models.append("gemini-1.5-flash-8b")
     models.append("gemini-1.5-pro")
-    from openai import OpenAI
     gemini_client = OpenAI(api_key=os.environ["GEMINI_API_KEY"], base_url="https://generativelanguage.googleapis.com/v1beta/")
 
 # User Auth
 users_string = os.environ["USERS"]
 users = json.loads(users_string)
-
-# Load the llm model config
-with open("model.json", 'r',  encoding='utf-8') as file:
-    model = json.load(file)
 
 # Make it pretty because I can't :(
 Bootstrap(app)
@@ -150,11 +153,9 @@ def text_history(history):
     return text_history
 
 def llm_proxy(prompt, bot_config, model_type):
-    if model_type == "llama-cpp":
-        return llm(prompt, model_type, bot_config)
+    if model_type.startswith("local-"):
+        return llm_local(prompt, model_type, bot_config)
     if model_type.startswith("mistral-"):
-        return llm_mistral(prompt, model_type, bot_config)
-    if model_type.startswith("open-"):
         return llm_mistral(prompt, model_type, bot_config)
     if model_type.startswith("gpt-"):
         return llm_oai(prompt, model_type, bot_config)
@@ -167,97 +168,56 @@ def llm_proxy(prompt, bot_config, model_type):
     if model_type.startswith("gemini-"):
         return llm_gemini(prompt, model_type, bot_config)
 
+# Query local models
+def llm_local(prompt, model_name, bot_config):
+    client = OpenAI(api_key="doesntmatter", base_url=local_models[model_name])
+    messages=[{"role": "system", "content": bot_config["identity"]},{"role": "user", "content": prompt}]
+    response = client.chat.completions.create(model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
+    user = bot_config["name"] + " " + model_name
+    return {"user": user, "text": response.choices[0].message.content}
+
 # Query mistral models
 def llm_mistral(prompt, model_name, bot_config):
-    messages = [ChatMessage(role="system", content=bot_config["identity"]), ChatMessage(role="user", content=prompt)]
-    response = mistral_client.chat(model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
+    messages=[{"role": "system", "content": bot_config["identity"]},{"role": "user", "content": prompt}]
+    response = mistral_client.chat.complete(model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
     user = bot_config["name"] + " " + model_name
     return {"user": user, "text": response.choices[0].message.content}
 
 # Query OpenAI models
 def llm_oai(prompt, model_name, bot_config):
-    messages = [ChatMessage(role="system", content=bot_config["identity"]), ChatMessage(role="user", content=prompt)]
+    messages=[{"role": "system", "content": bot_config["identity"]},{"role": "user", "content": prompt}]
     response = oai_client.chat.completions.create(model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
     user = bot_config["name"] + " " + model_name
     return {"user": user, "text": response.choices[0].message.content}
 
 # Query OpenAI o1 models, without a system message.  O1 class models don't support identities or temperature.
 def llm_o1(prompt, model_name, bot_config):
-    messages = [ChatMessage(role="user", content=prompt)]
+    messages=[{"role": "user", "content": prompt}]
     response = oai_client.chat.completions.create(model=model_name, messages=messages)
     user = bot_config["name"] + " " + model_name
     return {"user": user, "text": response.choices[0].message.content}
 
 # Query Anthropic models
 def llm_anthropic(prompt, model_name, bot_config):
-
-    message = anthropic_client.messages.create(
-        model=model_name,
-        max_tokens=4096,
-        temperature=float(bot_config["temperature"]),
-        system=bot_config["identity"],
-        messages=[
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "text",
-                        "text": prompt
-                    }
-                ]
-            }
-        ]
-    )  
+    messages=[{"role": "user", "content": prompt}]
+    response = anthropic_client.messages.create(max_tokens=8192, system=bot_config["identity"], model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
     user = bot_config["name"] + " " + model_name
-    return {"user": user, "text": message.content[0].text}
+    return {"user": user, "text": response.content[0].text}
 
 # Query Cerebras models
 def llm_cerebras(prompt, model_name, bot_config):
     model_name = model_name.replace("cerebras-", "")
-    messages = [ChatMessage(role="system", content=bot_config["identity"]), ChatMessage(role="user", content=prompt)]
+    messages=[{"role": "system", "content": bot_config["identity"]},{"role": "user", "content": prompt}]
     response = cerebras_client.chat.completions.create(model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
     user = bot_config["name"] + " " + model_name
     return {"user": user, "text": response.choices[0].message.content}
 
 # Google Gemini
 def llm_gemini(prompt, model_name, bot_config):
-    messages = [ChatMessage(role="system", content=bot_config["identity"]), ChatMessage(role="user", content=prompt)]
+    messages=[{"role": "system", "content": bot_config["identity"]},{"role": "user", "content": prompt}]
     response = gemini_client.chat.completions.create(model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
     user = bot_config["name"] + " " + model_name
     return {"user": user, "text": response.choices[0].message.content}
-
-def llm(user_prompt, model_name, bot_config):
-
-     # Build the prompt
-    prompt = model["prompt_format"].replace("{system}", bot_config["identity"])
-    prompt = prompt.replace("{prompt}", user_prompt)
-
-    api_data = {
-        "prompt": prompt,
-        "n_predict": int(bot_config["tokens"]),
-        "temperature": float(bot_config["temperature"]),
-        "stop": model["stop_tokens"],
-        "tokens_cached": 0
-    }
-
-    # Attempt to do a completion but retry and back off if the model is not ready
-    retries = 3
-    backoff_factor = 1
-    while retries > 0:
-        try:
-            response = requests.post(model["llama_endpoint"], headers={"Content-Type": "application/json"}, json=api_data)
-            json_output = response.json()
-            output = json_output['content']
-            break
-        except:
-            time.sleep(backoff_factor)
-            backoff_factor *= 2
-            retries -= 1
-            output = "My AI model is not responding try again in a moment 🔥🐳"
-            continue
-
-    user = bot_config["name"] + " " + model_name
-    return {"user": user, "text": output}
 
 # Flask forms is magic
 class PromptForm(FlaskForm):
@@ -315,7 +275,7 @@ def index():
     # Load the history array but remove items past 5
     history_file = session["user"] + "-history.json"
     history = load_chat_history(history_file)
-    if len(history) > 5:
+    if len(history) > HISTORY_LENGTH:
         history.pop(0)
 
     # Load the bot config
