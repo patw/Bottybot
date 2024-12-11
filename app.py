@@ -85,6 +85,7 @@ if "GEMINI_API_KEY" in os.environ:
     models.append("gemini-1.5-flash")
     models.append("gemini-1.5-flash-8b")
     models.append("gemini-1.5-pro")
+    models.append("gemini-2.0-flash-exp")
     gemini_client = OpenAI(api_key=os.environ["GEMINI_API_KEY"], base_url="https://generativelanguage.googleapis.com/v1beta/")
 
 # User Auth
