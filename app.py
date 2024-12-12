@@ -76,7 +76,7 @@ if "ANTHROPIC_API_KEY" in os.environ:
 # Configure Cerebras
 if "CEREBRAS_API_KEY" in os.environ:
     models.append("cerebras-llama3.1-8b")
-    models.append("cerebras-llama3.1-70b")
+    models.append("cerebras-llama-3.3-70b")
     from cerebras.cloud.sdk import Cerebras
     cerebras_client = Cerebras(api_key=os.environ.get("CEREBRAS_API_KEY"))
 
