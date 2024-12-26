@@ -13,8 +13,6 @@ from wtforms.validators import DataRequired
 import os
 import json
 import functools
-import requests
-import time
 import datetime
 
 # Some nice formatting for code
@@ -52,7 +50,8 @@ if "LOCAL_MODELS" in os.environ:
 # Configure MistralAI
 if "MISTRAL_API_KEY" in os.environ: 
     models.append("mistral-small-latest")
-    models.append("mistral-medium-latest")
+    models.append("ministral-3b-latest")
+    models.append("ministral-8b-latest")
     models.append("mistral-large-latest")
     from mistralai import Mistral
     mistral_client = Mistral(api_key=os.environ["MISTRAL_API_KEY"])
@@ -87,6 +86,11 @@ if "GEMINI_API_KEY" in os.environ:
     models.append("gemini-1.5-pro")
     models.append("gemini-2.0-flash-exp")
     gemini_client = OpenAI(api_key=os.environ["GEMINI_API_KEY"], base_url="https://generativelanguage.googleapis.com/v1beta/")
+
+# Configure Cerebras
+if "DEEPSEEK_API_KEY" in os.environ:
+    models.append("deepseek-chat")
+    deepseek_client = OpenAI(api_key=os.environ["DEEPSEEK_API_KEY"], base_url="https://api.deepseek.com")
 
 # User Auth
 users_string = os.environ["USERS"]
@@ -157,7 +161,7 @@ def text_history(history):
 def llm_proxy(prompt, bot_config, model_type):
     if model_type.startswith("local-"):
         return llm_local(prompt, model_type, bot_config)
-    if model_type.startswith("mistral-"):
+    if model_type.startswith("mistral-") or model_type.startswith("ministral-"):
         return llm_mistral(prompt, model_type, bot_config)
     if model_type.startswith("gpt-"):
         return llm_oai(prompt, model_type, bot_config)
@@ -169,6 +173,8 @@ def llm_proxy(prompt, bot_config, model_type):
         return llm_cerebras(prompt, model_type, bot_config)
     if model_type.startswith("gemini-"):
         return llm_gemini(prompt, model_type, bot_config)
+    if model_type.startswith("deepseek-"):
+        return llm_deepseek(prompt, model_type, bot_config)
 
 # Query local models
 def llm_local(prompt, model_name, bot_config):
@@ -218,6 +224,13 @@ def llm_cerebras(prompt, model_name, bot_config):
 def llm_gemini(prompt, model_name, bot_config):
     messages=[{"role": "system", "content": bot_config["identity"]},{"role": "user", "content": prompt}]
     response = gemini_client.chat.completions.create(model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
+    user = bot_config["name"] + " " + model_name
+    return {"user": user, "text": response.choices[0].message.content}
+
+# Deepseek Chat (coding)
+def llm_deepseek(prompt, model_name, bot_config):
+    messages=[{"role": "system", "content": bot_config["identity"]},{"role": "user", "content": prompt}]
+    response = deepseek_client.chat.completions.create(model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
     user = bot_config["name"] + " " + model_name
     return {"user": user, "text": response.choices[0].message.content}
 

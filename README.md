@@ -2,12 +2,12 @@
 
 ![Bots Talking](images/bottalk.jpg)
 
-A simple UI for debugging prompts across multiple models.  Supports local models (llama.cpp server or ollama server), as well as OpenAI,
-Anthropic, Google Gemini, Mistral and Cerebras.  Supports loadable system messages for bot identity.
+A simple UI for debugging prompts across multiple models.  Supports local models (llama.cpp server or ollama server), as well as OpenAI, Anthropic, Deepseek, Google Gemini, Mistral and Cerebras.  Supports loadable system messages for bot identity.
 
 ![BottyBot UI Screenshot](images/ui.png)
 ![BottyBot Library](images/bot_library.png)
 ![BottyBot Config](images/bot_config.png)
+![BottyBot Models](images/bottybotmodels.png)
 
 ## Local Installation
 
