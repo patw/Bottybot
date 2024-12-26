@@ -162,9 +162,9 @@ def llm_proxy(prompt, bot_config, model_type):
         return llm_local(prompt, model_type, bot_config)
     if model_type.startswith("mistral-") or model_type.startswith("ministral-"):
         return llm_mistral(prompt, model_type, bot_config)
-    if model_type.startswith("gpt-"):
+    if model_type.startswith("gpt-") or model_type.startswith("chatgpt-"):
         return llm_oai(prompt, model_type, bot_config)
-    if model_type.startswith("o1-"):
+    if model_type.startswith("o1"):
         return llm_o1(prompt, model_type, bot_config)
     if model_type.startswith("claude-"):
         return llm_anthropic(prompt, model_type, bot_config)
@@ -315,6 +315,8 @@ def index():
         # Prompt the LLM (with the augmentation), add that to history too!
         session["model_type"] = form_result["model_type"]
         new_history = llm_proxy(augmentation + prompt, bot_config, form_result["model_type"])
+        if new_history == None:
+            new_history = {"user": "error", "text": "Model Error 😭"}
         # Use Misaka library to format the output
         history.append(new_history)
 
