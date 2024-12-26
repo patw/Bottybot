@@ -58,9 +58,8 @@ if "MISTRAL_API_KEY" in os.environ:
 
 # Configure OpenAI
 if "OPENAI_API_KEY" in os.environ:
-    models.append("gpt-4o")
+    models.append("chatgpt-4o-latest")
     models.append("gpt-4o-mini")
-    models.append("gpt-4")
     models.append("o1-preview")
     models.append("o1-mini")
     oai_client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
