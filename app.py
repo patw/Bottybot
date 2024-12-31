@@ -6,7 +6,7 @@ from flask_bootstrap import Bootstrap
 
 # Flask forms integrations which save insane amounts of time
 from flask_wtf import FlaskForm
-from wtforms import StringField, SubmitField, PasswordField, TextAreaField, IntegerField, FloatField, SelectField
+from wtforms import StringField, SubmitField, PasswordField, TextAreaField, IntegerField, FloatField, SelectField, BooleanField
 from wtforms.validators import DataRequired
 
 # Basic python stuff
@@ -237,6 +237,7 @@ def llm_deepseek(prompt, model_name, bot_config):
 class PromptForm(FlaskForm):
     prompt = StringField('Prompt 💬', validators=[DataRequired()])
     model_type = SelectField('Model', choices=models, validators=[DataRequired()])
+    raw_output = BooleanField('Raw Output')
     submit = SubmitField('Submit')
 
 # Config form for bot
@@ -283,8 +284,15 @@ def index():
     # The single input box and submit button
     form = PromptForm()
 
+    # Model will be the same as the last selected
     if "model_type" in session:
         form.model_type.data = session["model_type"]
+
+    # Raw output option will be the same as the last selected
+    if "raw_output" in session:
+        form.raw_output.data = session["raw_output"]
+    else:
+        session["raw_output"] = False
 
     # Load the history array but remove items past 5
     history_file = session["user"] + "-history.json"
@@ -312,12 +320,17 @@ def index():
         new_prompt = {"user": session["user"], "text": form_result["prompt"]}
         history.append(new_prompt)
 
+        # Determine if we're using raw output
+        if "raw_output" in form_result:
+            session["raw_output"] = True
+        else:
+            session["raw_output"] = False
+
         # Prompt the LLM (with the augmentation), add that to history too!
         session["model_type"] = form_result["model_type"]
         new_history = llm_proxy(augmentation + prompt, bot_config, form_result["model_type"])
         if new_history == None:
             new_history = {"user": "error", "text": "Model Error 😭"}
-        # Use Misaka library to format the output
         history.append(new_history)
 
         # Dump the history to the user file - multitenant!
@@ -325,10 +338,17 @@ def index():
             json.dump(history, file)
         return redirect(url_for('index'))
     
-    # Spit out the template with formatted strings
-    for dictionary in history:
-        dictionary["text"] = misaka.html(dictionary["text"], extensions=misaka.EXT_FENCED_CODE)
-    return render_template('index.html', history=history, form=form)
+    # Spit out the template with either raw output or with each entry in the history formatted with Misaka (default)
+    if session["raw_output"]:
+        for dictionary in history:
+            dictionary["text"] = dictionary["text"].replace('\n', '<br>')
+        return render_template('index.html', history=history, form=form)
+    else:
+        for dictionary in history:
+            dictionary["text"] = misaka.html(dictionary["text"], extensions=misaka.EXT_FENCED_CODE)
+        return render_template('index.html', history=history, form=form)
+
+    
 
 # Configure the bot
 @app.route('/config', methods=['GET', 'POST'])
