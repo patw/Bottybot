@@ -46,6 +46,7 @@ if "LOCAL_MODELS" in os.environ:
     local_models = json.loads(os.environ["LOCAL_MODELS"])
     for model_name in local_models:
         models.append(model_name)
+        print(model_name)
 
 # Configure MistralAI
 if "MISTRAL_API_KEY" in os.environ: 
@@ -158,7 +159,10 @@ def text_history(history):
     return text_history
 
 def llm_proxy(prompt, bot_config, model_type):
+    print("got here")
     if model_type.startswith("local-"):
+        return llm_local(prompt, model_type, bot_config)
+    if model_type.startswith("ollama-"):
         return llm_local(prompt, model_type, bot_config)
     if model_type.startswith("mistral-") or model_type.startswith("ministral-"):
         return llm_mistral(prompt, model_type, bot_config)
@@ -177,9 +181,15 @@ def llm_proxy(prompt, bot_config, model_type):
 
 # Query local models
 def llm_local(prompt, model_name, bot_config):
-    client = OpenAI(api_key="doesntmatter", base_url=local_models[model_name])
+    print(local_models[model_name])
+    print(model_name)
+    base_url_mod_temp = local_models[model_name]
+    base_url_ollama_temp = base_url_mod_temp.replace('ollama-','')
+    client = OpenAI(api_key="ollama", base_url=base_url_ollama_temp)
     messages=[{"role": "system", "content": bot_config["identity"]},{"role": "user", "content": prompt}]
-    response = client.chat.completions.create(model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
+    print(messages)
+    response = client.chat.completions.create(model=model_name.replace('ollama-',''), temperature=float(bot_config["temperature"]), messages=messages)
+    print(response)
     user = bot_config["name"] + " " + model_name
     return {"user": user, "text": response.choices[0].message.content}
 
