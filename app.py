@@ -89,6 +89,7 @@ if "GEMINI_API_KEY" in os.environ:
 # Configure Cerebras
 if "DEEPSEEK_API_KEY" in os.environ:
     models.append("deepseek-chat")
+    models.append("deepseek-reasoner")
     deepseek_client = OpenAI(api_key=os.environ["DEEPSEEK_API_KEY"], base_url="https://api.deepseek.com")
 
 # User Auth
@@ -228,8 +229,12 @@ def llm_gemini(prompt, model_name, bot_config):
 
 # Deepseek Chat (coding)
 def llm_deepseek(prompt, model_name, bot_config):
-    messages=[{"role": "system", "content": bot_config["identity"]},{"role": "user", "content": prompt}]
-    response = deepseek_client.chat.completions.create(model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
+    if model_name.endswith("-reasoner"):
+        messages=[{"role": "user", "content": prompt}]
+        response = deepseek_client.chat.completions.create(model=model_name, messages=messages)
+    else:
+        messages=[{"role": "system", "content": bot_config["identity"]},{"role": "user", "content": prompt}]
+        response = deepseek_client.chat.completions.create(model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
     user = bot_config["name"] + " " + model_name
     return {"user": user, "text": response.choices[0].message.content}
 
