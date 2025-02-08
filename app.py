@@ -121,7 +121,6 @@ def load_bot_config(file_path):
     data = {
         "name": "Wizard 🧙", 
         "identity": "You are Wizard, a friendly chatbot. You help the user answer questions, solve problems and make plans.  You think deeply about the question and provide a detailed, accurate response.", 
-        "tokens": "-1", 
         "temperature": "0.7"
     }
 
@@ -180,21 +179,21 @@ def llm_proxy(prompt, bot_config, model_type):
 def llm_local(prompt, model_name, bot_config):
     client = OpenAI(api_key="doesntmatter", base_url=local_models[model_name])
     messages=[{"role": "system", "content": bot_config["identity"]},{"role": "user", "content": prompt}]
-    response = client.chat.completions.create(model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
+    response = client.chat.completions.create(max_tokens=4096, model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
     user = bot_config["name"] + " " + model_name
     return {"user": user, "text": response.choices[0].message.content}
 
 # Query mistral models
 def llm_mistral(prompt, model_name, bot_config):
     messages=[{"role": "system", "content": bot_config["identity"]},{"role": "user", "content": prompt}]
-    response = mistral_client.chat.complete(model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
+    response = mistral_client.chat.complete(max_tokens=4096, model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
     user = bot_config["name"] + " " + model_name
     return {"user": user, "text": response.choices[0].message.content}
 
 # Query OpenAI models
 def llm_oai(prompt, model_name, bot_config):
     messages=[{"role": "system", "content": bot_config["identity"]},{"role": "user", "content": prompt}]
-    response = oai_client.chat.completions.create(model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
+    response = oai_client.chat.completions.create(max_tokens=4096, model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
     user = bot_config["name"] + " " + model_name
     return {"user": user, "text": response.choices[0].message.content}
 
@@ -208,7 +207,7 @@ def llm_o1(prompt, model_name, bot_config):
 # Query Anthropic models
 def llm_anthropic(prompt, model_name, bot_config):
     messages=[{"role": "user", "content": prompt}]
-    response = anthropic_client.messages.create(max_tokens=8192, system=bot_config["identity"], model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
+    response = anthropic_client.messages.create(max_tokens=4096, system=bot_config["identity"], model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
     user = bot_config["name"] + " " + model_name
     return {"user": user, "text": response.content[0].text}
 
@@ -216,14 +215,14 @@ def llm_anthropic(prompt, model_name, bot_config):
 def llm_cerebras(prompt, model_name, bot_config):
     model_name = model_name.replace("cerebras-", "")
     messages=[{"role": "system", "content": bot_config["identity"]},{"role": "user", "content": prompt}]
-    response = cerebras_client.chat.completions.create(model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
+    response = cerebras_client.chat.completions.create(max_tokens=4096, model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
     user = bot_config["name"] + " " + model_name
     return {"user": user, "text": response.choices[0].message.content}
 
 # Google Gemini
 def llm_gemini(prompt, model_name, bot_config):
     messages=[{"role": "system", "content": bot_config["identity"]},{"role": "user", "content": prompt}]
-    response = gemini_client.chat.completions.create(model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
+    response = gemini_client.chat.completions.create(max_tokens=4096, model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
     user = bot_config["name"] + " " + model_name
     return {"user": user, "text": response.choices[0].message.content}
 
@@ -231,10 +230,10 @@ def llm_gemini(prompt, model_name, bot_config):
 def llm_deepseek(prompt, model_name, bot_config):
     if model_name.endswith("-reasoner"):
         messages=[{"role": "user", "content": prompt}]
-        response = deepseek_client.chat.completions.create(model=model_name, messages=messages)
+        response = deepseek_client.chat.completions.create(max_tokens=4096, model=model_name, messages=messages)
     else:
         messages=[{"role": "system", "content": bot_config["identity"]},{"role": "user", "content": prompt}]
-        response = deepseek_client.chat.completions.create(model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
+        response = deepseek_client.chat.completions.create(max_tokens=4096, model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
     user = bot_config["name"] + " " + model_name
     return {"user": user, "text": response.choices[0].message.content}
 
@@ -249,7 +248,6 @@ class PromptForm(FlaskForm):
 class BotConfigForm(FlaskForm):
     name = StringField('Name', validators=[DataRequired()])
     identity = TextAreaField('Identity', validators=[DataRequired()])
-    tokens = IntegerField('Output Token Limit', validators=[DataRequired()])
     temperature = FloatField('LLM Temperature', validators=[DataRequired()])
     submit = SubmitField('Save')
 
@@ -367,14 +365,12 @@ def config():
     # Populate the form
     form.name.data = bot_config["name"]
     form.identity.data = bot_config["identity"]
-    form.tokens.data = bot_config["tokens"]
     form.temperature.data = bot_config["temperature"]
 
     if form.validate_on_submit():
         form_result = request.form.to_dict(flat=True)
         bot_config["name"] = form_result["name"]
         bot_config["identity"] = form_result["identity"]
-        bot_config["tokens"] = form_result["tokens"]
         bot_config["temperature"] = form_result["temperature"]
         with open(bot_file, 'w',  encoding='utf-8') as file:
             json.dump(bot_config, file)
