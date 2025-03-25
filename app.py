@@ -81,10 +81,9 @@ if "CEREBRAS_API_KEY" in os.environ:
 
 # Configure Google Gemini
 if "GEMINI_API_KEY" in os.environ:
-    models.append("gemini-1.5-flash")
-    models.append("gemini-1.5-flash-8b")
-    models.append("gemini-1.5-pro")
-    models.append("gemini-2.0-flash-exp")
+    models.append("gemini-2.0-flash-lite")
+    models.append("gemini-2.0-flash")
+    models.append("gemini-2.5-pro-exp-03-25")
     gemini_client = OpenAI(api_key=os.environ["GEMINI_API_KEY"], base_url="https://generativelanguage.googleapis.com/v1beta/")
 
 # Configure Cerebras
