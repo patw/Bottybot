@@ -186,14 +186,14 @@ def llm_local(prompt, model_name, bot_config):
 # Query mistral models
 def llm_mistral(prompt, model_name, bot_config):
     messages=[{"role": "system", "content": bot_config["identity"]},{"role": "user", "content": prompt}]
-    response = mistral_client.chat.complete(max_tokens=4096, model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
+    response = mistral_client.chat.complete(model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
     user = bot_config["name"] + " " + model_name
     return {"user": user, "text": response.choices[0].message.content}
 
 # Query OpenAI models
 def llm_oai(prompt, model_name, bot_config):
     messages=[{"role": "system", "content": bot_config["identity"]},{"role": "user", "content": prompt}]
-    response = oai_client.chat.completions.create(max_tokens=4096, model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
+    response = oai_client.chat.completions.create(model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
     user = bot_config["name"] + " " + model_name
     return {"user": user, "text": response.choices[0].message.content}
 
@@ -207,7 +207,7 @@ def llm_o1(prompt, model_name, bot_config):
 # Query Anthropic models
 def llm_anthropic(prompt, model_name, bot_config):
     messages=[{"role": "user", "content": prompt}]
-    response = anthropic_client.messages.create(max_tokens=4096, system=bot_config["identity"], model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
+    response = anthropic_client.messages.create(system=bot_config["identity"], model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
     user = bot_config["name"] + " " + model_name
     return {"user": user, "text": response.content[0].text}
 
@@ -215,14 +215,14 @@ def llm_anthropic(prompt, model_name, bot_config):
 def llm_cerebras(prompt, model_name, bot_config):
     model_name = model_name.replace("cerebras-", "")
     messages=[{"role": "system", "content": bot_config["identity"]},{"role": "user", "content": prompt}]
-    response = cerebras_client.chat.completions.create(max_tokens=4096, model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
+    response = cerebras_client.chat.completions.create(model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
     user = bot_config["name"] + " " + model_name
     return {"user": user, "text": response.choices[0].message.content}
 
 # Google Gemini
 def llm_gemini(prompt, model_name, bot_config):
     messages=[{"role": "system", "content": bot_config["identity"]},{"role": "user", "content": prompt}]
-    response = gemini_client.chat.completions.create(max_tokens=4096, model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
+    response = gemini_client.chat.completions.create(model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
     user = bot_config["name"] + " " + model_name
     return {"user": user, "text": response.choices[0].message.content}
 
@@ -230,10 +230,10 @@ def llm_gemini(prompt, model_name, bot_config):
 def llm_deepseek(prompt, model_name, bot_config):
     if model_name.endswith("-reasoner"):
         messages=[{"role": "user", "content": prompt}]
-        response = deepseek_client.chat.completions.create(max_tokens=4096, model=model_name, messages=messages)
+        response = deepseek_client.chat.completions.create(model=model_name, messages=messages)
     else:
         messages=[{"role": "system", "content": bot_config["identity"]},{"role": "user", "content": prompt}]
-        response = deepseek_client.chat.completions.create(max_tokens=4096, model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
+        response = deepseek_client.chat.completions.create(model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
     user = bot_config["name"] + " " + model_name
     return {"user": user, "text": response.choices[0].message.content}
 
