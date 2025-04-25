@@ -209,7 +209,7 @@ def llm_o1(prompt, model_name, bot_config):
 # Query Anthropic models
 def llm_anthropic(prompt, model_name, bot_config):
     messages=[{"role": "user", "content": prompt}]
-    response = anthropic_client.messages.create(system=bot_config["identity"], model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
+    response = anthropic_client.messages.create(system=bot_config["identity"], max_tokens=8192, model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
     user = bot_config["name"] + " " + model_name
     return {"user": user, "text": response.content[0].text}
 
