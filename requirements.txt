@@ -16,7 +16,7 @@ requests
 misaka
 
 # OpenAI
-OpenAI
+openai
 
 # Mistral AI
 mistralai

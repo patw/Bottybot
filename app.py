@@ -199,7 +199,7 @@ def llm_proxy(prompt, bot_config, model_type):
         return llm_mistral(prompt, model_type, bot_config)
     if model_type.startswith("gpt-") or model_type.startswith("chatgpt-"):
         return llm_oai(prompt, model_type, bot_config)
-    if model_type.startswith("o1"):
+    if model_type.startswith("o4"):
         return llm_o1(prompt, model_type, bot_config)
     if model_type.startswith("claude-"):
         return llm_anthropic(prompt, model_type, bot_config)
