@@ -38,61 +38,94 @@ app.config['SESSION_COOKIE_NAME'] = 'bottybot2'
 # BottyBot API Key for /api/chat endpoint
 BOTTY_KEY = os.environ["BOTTY_KEY"]
 
-# Configure all available models based on configured keys
-models = []
+# --- Model Configuration ---
+# Global dictionary to store initialized API clients
+clients = {}
+# Global list of available model names for the form
+available_models_for_form = []
+# Global dictionary for local model names and their base URLs
+local_model_urls = {}
 
-# Local models are configured as a dict in .env, they need to start with "local-"
-if "LOCAL_MODELS" in os.environ:
-    local_models = json.loads(os.environ["LOCAL_MODELS"])
-    for model_name in local_models:
-        models.append(model_name)
+def initialize_models_and_clients():
+    global available_models_for_form, clients, local_model_urls
 
-# Configure MistralAI
-if "MISTRAL_API_KEY" in os.environ: 
-    models.append("mistral-small-latest")
-    models.append("ministral-3b-latest")
-    models.append("ministral-8b-latest")
-    models.append("mistral-large-latest")
-    from mistralai import Mistral
-    mistral_client = Mistral(api_key=os.environ["MISTRAL_API_KEY"])
+    # 1. Handle Local Models from LOCAL_MODELS env var
+    if "LOCAL_MODELS" in os.environ:
+        try:
+            local_models_config = json.loads(os.environ["LOCAL_MODELS"])
+            for model_name, base_url in local_models_config.items():
+                # Ensure local model names are added to the list and their URLs stored
+                if model_name not in available_models_for_form:
+                    available_models_for_form.append(model_name)
+                local_model_urls[model_name] = base_url
+        except json.JSONDecodeError:
+            print("Error decoding LOCAL_MODELS environment variable. Local models may not be available.")
 
-# Configure OpenAI
-if "OPENAI_API_KEY" in os.environ:
-    models.append("gpt-4.1")
-    models.append("gpt-4.1-mini")
-    models.append("gpt-4.1-nano")
-    models.append("o1-preview")
-    models.append("o1-mini")
-    oai_client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+    # 2. Handle models from models_config.json
+    try:
+        with open("models_config.json", 'r', encoding='utf-8') as f:
+            external_model_configs = json.load(f)
+    except FileNotFoundError:
+        print("models_config.json not found. No additional external models will be configured.")
+        external_model_configs = []
+    except json.JSONDecodeError:
+        print("Error decoding models_config.json. External models may not be configured correctly.")
+        external_model_configs = []
 
-# Configure Anthropic
-if "ANTHROPIC_API_KEY" in os.environ:
-    models.append("claude-3-5-haiku-latest")
-    models.append("claude-3-5-sonnet-latest")
-    models.append("claude-3-7-sonnet-latest")
-    import anthropic
-    anthropic_client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+    for config in external_model_configs:
+        provider = config.get("provider")
+        api_key_env = config.get("api_key_env")
+        model_name = config.get("name")
+        base_url_from_config = config.get("base_url")
 
-# Configure Cerebras
-if "CEREBRAS_API_KEY" in os.environ:
-    models.append("cerebras-llama3.1-8b")
-    models.append("cerebras-llama-3.3-70b")
-    from cerebras.cloud.sdk import Cerebras
-    cerebras_client = Cerebras(api_key=os.environ.get("CEREBRAS_API_KEY"))
+        if not provider or not api_key_env or not model_name:
+            print(f"Skipping invalid model configuration in models_config.json: {config}")
+            continue
 
-# Configure Google Gemini
-if "GEMINI_API_KEY" in os.environ:
-    models.append("gemini-2.0-flash-lite")
-    models.append("gemini-2.0-flash")
-    models.append("gemini-2.5-flash-preview-04-17")
-    models.append("gemini-2.5-pro-exp-03-25")
-    gemini_client = OpenAI(api_key=os.environ["GEMINI_API_KEY"], base_url="https://generativelanguage.googleapis.com/v1beta/")
+        if api_key_env in os.environ:
+            api_key = os.environ[api_key_env]
+            
+            if model_name not in available_models_for_form:
+                available_models_for_form.append(model_name)
 
-# Configure Cerebras
-if "DEEPSEEK_API_KEY" in os.environ:
-    models.append("deepseek-chat")
-    models.append("deepseek-reasoner")
-    deepseek_client = OpenAI(api_key=os.environ["DEEPSEEK_API_KEY"], base_url="https://api.deepseek.com")
+            # Initialize client if not already done for this provider
+            if provider == "openai" and "openai" not in clients:
+                clients["openai"] = OpenAI(api_key=api_key)
+            elif provider == "mistral" and "mistral" not in clients:
+                from mistralai import Mistral
+                clients["mistral"] = Mistral(api_key=api_key)
+            elif provider == "anthropic" and "anthropic" not in clients:
+                import anthropic
+                clients["anthropic"] = anthropic.Anthropic(api_key=api_key)
+            elif provider == "cerebras" and "cerebras" not in clients:
+                from cerebras.cloud.sdk import Cerebras
+                clients["cerebras"] = Cerebras(api_key=api_key)
+            elif provider == "gemini" and "gemini" not in clients:
+                if base_url_from_config:
+                    clients["gemini"] = OpenAI(api_key=api_key, base_url=base_url_from_config)
+                else:
+                    print(f"Warning: Gemini model {model_name} missing 'base_url' in config. It may not be available.")
+                    if model_name in available_models_for_form: available_models_for_form.remove(model_name)
+            elif provider == "deepseek" and "deepseek" not in clients:
+                if base_url_from_config:
+                    clients["deepseek"] = OpenAI(api_key=api_key, base_url=base_url_from_config)
+                else:
+                    print(f"Warning: DeepSeek model {model_name} missing 'base_url' in config. It may not be available.")
+                    if model_name in available_models_for_form: available_models_for_form.remove(model_name)
+        else:
+            # API key not found, so this model isn't available
+            # print(f"API key {api_key_env} for {model_name} not found. Model will not be available.")
+            if model_name in available_models_for_form:
+                 available_models_for_form.remove(model_name) # Remove if its API key is missing
+
+    available_models_for_form = sorted(list(set(available_models_for_form)))
+
+# Load environment variables first
+load_dotenv()
+
+# Initialize models and clients after loading .env and before defining forms or routes
+initialize_models_and_clients()
+# --- End Model Configuration ---
 
 # User Auth
 users_string = os.environ["USERS"]
@@ -179,70 +212,103 @@ def llm_proxy(prompt, bot_config, model_type):
 
 # Query local models
 def llm_local(prompt, model_name, bot_config):
-    client = OpenAI(api_key="doesntmatter", base_url=local_models[model_name])
-    messages=[{"role": "system", "content": bot_config["identity"]},{"role": "user", "content": prompt}]
-    response = client.chat.completions.create(max_tokens=4096, model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
-    user = bot_config["name"] + " " + model_name
-    return {"user": user, "text": response.choices[0].message.content}
+    if model_name not in local_model_urls:
+        return {"user": "error", "text": f"Local model '{model_name}' configuration not found or base URL is missing."}
+    base_url = local_model_urls[model_name]
+    try:
+        client = OpenAI(api_key="doesntmatter", base_url=base_url)
+        messages=[{"role": "system", "content": bot_config["identity"]},{"role": "user", "content": prompt}]
+        response = client.chat.completions.create(max_tokens=4096, model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
+        user = bot_config["name"] + " " + model_name
+        return {"user": user, "text": response.choices[0].message.content}
+    except Exception as e:
+        print(f"Error in llm_local for {model_name}: {e}")
+        return {"user": "error", "text": f"Error with local model {model_name}: {e}"}
 
 # Query mistral models
 def llm_mistral(prompt, model_name, bot_config):
+    mistral_client_instance = clients.get("mistral")
+    if not mistral_client_instance:
+        return {"user": "error", "text": "Mistral client not configured. Check MISTRAL_API_KEY."}
     messages=[{"role": "system", "content": bot_config["identity"]},{"role": "user", "content": prompt}]
-    response = mistral_client.chat.complete(model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
+    response = mistral_client_instance.chat.complete(model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
     user = bot_config["name"] + " " + model_name
     return {"user": user, "text": response.choices[0].message.content}
 
 # Query OpenAI models
 def llm_oai(prompt, model_name, bot_config):
+    oai_client_instance = clients.get("openai")
+    if not oai_client_instance:
+        return {"user": "error", "text": "OpenAI client not configured. Check OPENAI_API_KEY."}
     messages=[{"role": "system", "content": bot_config["identity"]},{"role": "user", "content": prompt}]
-    response = oai_client.chat.completions.create(model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
+    response = oai_client_instance.chat.completions.create(model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
     user = bot_config["name"] + " " + model_name
     return {"user": user, "text": response.choices[0].message.content}
 
 # Query OpenAI o1 models, without a system message.  O1 class models don't support identities or temperature.
 def llm_o1(prompt, model_name, bot_config):
+    oai_client_instance = clients.get("openai") # o1 models use the OpenAI client
+    if not oai_client_instance:
+        return {"user": "error", "text": "OpenAI client for o1 models not configured. Check OPENAI_API_KEY."}
     messages=[{"role": "user", "content": prompt}]
-    response = oai_client.chat.completions.create(model=model_name, messages=messages)
+    response = oai_client_instance.chat.completions.create(model=model_name, messages=messages)
     user = bot_config["name"] + " " + model_name
     return {"user": user, "text": response.choices[0].message.content}
 
 # Query Anthropic models
 def llm_anthropic(prompt, model_name, bot_config):
+    anthropic_client_instance = clients.get("anthropic")
+    if not anthropic_client_instance:
+        return {"user": "error", "text": "Anthropic client not configured. Check ANTHROPIC_API_KEY."}
     messages=[{"role": "user", "content": prompt}]
-    response = anthropic_client.messages.create(system=bot_config["identity"], max_tokens=8192, model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
+    response = anthropic_client_instance.messages.create(system=bot_config["identity"], max_tokens=8192, model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
     user = bot_config["name"] + " " + model_name
     return {"user": user, "text": response.content[0].text}
 
 # Query Cerebras models
 def llm_cerebras(prompt, model_name, bot_config):
-    model_name = model_name.replace("cerebras-", "")
+    cerebras_client_instance = clients.get("cerebras")
+    if not cerebras_client_instance:
+        return {"user": "error", "text": "Cerebras client not configured. Check CEREBRAS_API_KEY."}
+    
+    # model_name is the original (e.g., "cerebras-llama3.1-8b")
+    # model_name_for_api will be the processed name for the API call (e.g., "llama3.1-8b")
+    model_name_for_api = model_name.replace("cerebras-", "")
+    
     messages=[{"role": "system", "content": bot_config["identity"]},{"role": "user", "content": prompt}]
-    response = cerebras_client.chat.completions.create(model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
-    user = bot_config["name"] + " " + model_name
-    return {"user": user, "text": response.choices[0].message.content}
+    response = cerebras_client_instance.chat.completions.create(model=model_name_for_api, temperature=float(bot_config["temperature"]), messages=messages)
+    # The user string in the return will use the original model_name for display consistency.
+    return {"user": bot_config["name"] + " " + model_name, "text": response.choices[0].message.content}
 
 # Google Gemini
 def llm_gemini(prompt, model_name, bot_config):
+    gemini_client_instance = clients.get("gemini")
+    if not gemini_client_instance:
+        return {"user": "error", "text": "Gemini client not configured. Check GEMINI_API_KEY and models_config.json for base_url."}
     messages=[{"role": "system", "content": bot_config["identity"]},{"role": "user", "content": prompt}]
-    response = gemini_client.chat.completions.create(model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
+    response = gemini_client_instance.chat.completions.create(model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
     user = bot_config["name"] + " " + model_name
     return {"user": user, "text": response.choices[0].message.content}
 
 # Deepseek Chat (coding)
 def llm_deepseek(prompt, model_name, bot_config):
+    deepseek_client_instance = clients.get("deepseek")
+    if not deepseek_client_instance:
+        return {"user": "error", "text": "DeepSeek client not configured. Check DEEPSEEK_API_KEY and models_config.json for base_url."}
+    
     if model_name.endswith("-reasoner"):
         messages=[{"role": "user", "content": prompt}]
-        response = deepseek_client.chat.completions.create(model=model_name, messages=messages)
+        response = deepseek_client_instance.chat.completions.create(model=model_name, messages=messages)
     else:
         messages=[{"role": "system", "content": bot_config["identity"]},{"role": "user", "content": prompt}]
-        response = deepseek_client.chat.completions.create(model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
+        response = deepseek_client_instance.chat.completions.create(model=model_name, temperature=float(bot_config["temperature"]), messages=messages)
     user = bot_config["name"] + " " + model_name
     return {"user": user, "text": response.choices[0].message.content}
 
 # Flask forms is magic
 class PromptForm(FlaskForm):
     prompt = StringField('Prompt 💬', validators=[DataRequired()])
-    model_type = SelectField('Model', choices=models, validators=[DataRequired()])
+    model_type = SelectField('Model', choices=available_models_for_form, validators=[DataRequired()])
     raw_output = BooleanField('Raw Output')
     submit = SubmitField('Submit')
 
@@ -508,7 +574,7 @@ def api_chat():
     prompt = request.form.get('prompt')
     model_type = request.form.get('model_type')
     if not prompt or not model_type:
-        return jsonify({"error": "You need to send a prompt and the model name you want to use eg. llama-cpp"})
+        return jsonify({"error": "You need to send a prompt and the model name you want to use (e.g., local-mymodel or gpt-4.1)."}), 400
 
     # Yeah this is hacky but we want this to fail and load
     # the default wizard persona
